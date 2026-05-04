@@ -1,0 +1,19 @@
+html {
+  background: #f3f7f1;
+}
+
+html[data-calmo-theme="Secondary"] {
+  background: #001f28;
+}
+
+html[data-calmo-theme="Tertiary"] {
+  background: #f5eee7;
+}
+
+html[data-calmo-theme="Light"] {
+  background: #ffffff;
+}
+
+html[data-calmo-theme="Dark"] {
+  background: #000000;
+}
