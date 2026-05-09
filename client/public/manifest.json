@@ -3,7 +3,7 @@
   "name": "Calmo",
   "description": "A quiet place to pause.",
   "version": "1.0.0",
-  "permissions": ["alarms", "storage", "tabs"],
+  "permissions": ["alarms", "storage", "tabs", "offscreen", "scripting"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "Calmo",

@@ -1,6 +1,44 @@
 const REMINDER_ALARM = 'calmo-rest-reminder'
 const DEFAULT_INTERVAL_MINUTES = 1
+const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html'
 let pomodoroActive = false
+
+async function hasOffscreenDocument() {
+  if (!chrome.runtime.getContexts) return false
+
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)],
+  })
+
+  return contexts.length > 0
+}
+
+async function ensureOffscreenDocument() {
+  if (!chrome.offscreen || (await hasOffscreenDocument())) return
+
+  await chrome.offscreen.createDocument({
+    url: OFFSCREEN_DOCUMENT_PATH,
+    reasons: ['AUDIO_PLAYBACK'],
+    justification: 'Play soft completion sounds for Calmo timers.',
+  })
+}
+
+async function playTimerSound(soundType) {
+  const { calmoSound } = await chrome.storage.local.get('calmoSound')
+
+  if (calmoSound === 'Off') return
+
+  try {
+    await ensureOffscreenDocument()
+    await chrome.runtime.sendMessage({
+      type: 'CALMO_OFFSCREEN_PLAY_TIMER_SOUND',
+      soundType,
+    })
+  } catch {
+    // Sound is optional; timers should continue if audio is unavailable.
+  }
+}
 
 async function getReminderInterval() {
   const { calmoReminderInterval } = await chrome.storage.local.get('calmoReminderInterval')
@@ -24,37 +62,66 @@ async function scheduleReminder() {
 async function showRestOverlay() {
   if (pomodoroActive) return
 
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
-
-  if (!tab?.id || !tab.url || tab.url.startsWith('chrome://')) return
-
-  chrome.tabs.sendMessage(tab.id, { type: 'CALMO_SHOW_REST_OVERLAY' }).catch(() => {
-    // Some browser pages and restricted documents cannot receive content script messages.
-  })
+  await sendActiveTabMessage({ type: 'CALMO_SHOW_REST_OVERLAY' })
 }
 
 async function sendActiveTabMessage(message) {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
 
-  if (!tab?.id || !tab.url || tab.url.startsWith('chrome://')) return false
+  if (!tab?.id || !tab.url || isRestrictedUrl(tab.url)) return false
 
   try {
     await chrome.tabs.sendMessage(tab.id, message)
     return true
   } catch {
-    return false
+    return injectContentScript(tab.id).then(
+      async () => {
+        try {
+          await chrome.tabs.sendMessage(tab.id, message)
+          return true
+        } catch {
+          return false
+        }
+      },
+      () => false,
+    )
   }
 }
 
+function isRestrictedUrl(url) {
+  return (
+    url.startsWith('chrome://') ||
+    url.startsWith('edge://') ||
+    url.startsWith('about:') ||
+    url.startsWith('chrome-extension://')
+  )
+}
+
+function injectContentScript(tabId) {
+  if (!chrome.scripting?.executeScript) return Promise.reject(new Error('No scripting API'))
+
+  return chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content.js'],
+  })
+}
+
 async function startPomodoro(workMinutes, breakMinutes) {
-  pomodoroActive = true
   await chrome.alarms.clear(REMINDER_ALARM)
 
-  return sendActiveTabMessage({
+  const sent = await sendActiveTabMessage({
     type: 'CALMO_START_POMODORO',
     workMinutes,
     breakMinutes,
   })
+
+  pomodoroActive = sent
+
+  if (!sent) {
+    scheduleReminder()
+  }
+
+  return sent
 }
 
 function finishPomodoro() {
@@ -90,6 +157,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       .then((sent) => sendResponse({ ok: sent }))
       .catch(() => sendResponse({ ok: false }))
 
+    return true
+  }
+
+  if (message?.type === 'CALMO_UPDATE_THEME') {
+    chrome.storage.local
+      .set({ calmoTheme: message.theme })
+      .then(() => sendActiveTabMessage({ type: 'CALMO_SET_THEME', theme: message.theme }))
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }))
+    return true
+  }
+
+  if (message?.type === 'CALMO_UPDATE_SOUND') {
+    chrome.storage.local.set({ calmoSound: message.sound }).then(() => sendResponse({ ok: true }))
+    return true
+  }
+
+  if (message?.type === 'CALMO_PLAY_TIMER_SOUND') {
+    playTimerSound(message.soundType).then(() => sendResponse({ ok: true }))
     return true
   }
 

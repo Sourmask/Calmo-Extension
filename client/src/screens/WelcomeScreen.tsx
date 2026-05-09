@@ -9,7 +9,7 @@ export function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
       <p className="welcome-tagline">You've done enough.</p>
       <div className="welcome-actions">
         <button className="primary-button" type="button" onClick={onBegin}>
-          begin resting
+          Begin Resting
         </button>
         <span>No account needed</span>
       </div>

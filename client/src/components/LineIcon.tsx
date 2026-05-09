@@ -11,6 +11,31 @@ export function LineIcon({ name }: { name: string }) {
       )}
       {name === 'tilt' && <path d="M9 23L23 9" />}
       {name === 'circle' && <circle cx="16" cy="16" r="8" />}
+      {name === 'storm' && (
+        <>
+          <path d="M8 19C7 18 6 16 6 14C6 10 9 8 12 8C14 5 20 6 22 10C25 10 27 12 27 15C27 18 25 20 22 20H10" />
+          <path d="M15 20L12 25H17L14 29" />
+          <path d="M21 22L19 26" />
+        </>
+      )}
+      {name === 'soft-circle' && (
+        <>
+          <circle cx="16" cy="16" r="8" />
+          <path d="M12 16H20" />
+        </>
+      )}
+      {name === 'spark' && (
+        <>
+          <path d="M16 5V12" />
+          <path d="M16 20V27" />
+          <path d="M5 16H12" />
+          <path d="M20 16H27" />
+          <path d="M11 11L13 13" />
+          <path d="M19 19L21 21" />
+          <path d="M21 11L19 13" />
+          <path d="M13 19L11 21" />
+        </>
+      )}
       {name === 'small-circle' && <circle cx="16" cy="16" r="5" />}
       {name === 'body' && <rect x="8" y="12" width="16" height="8" rx="4" />}
       {name === 'layers' && (
@@ -18,6 +43,14 @@ export function LineIcon({ name }: { name: string }) {
           <path d="M9 11H23" />
           <path d="M7 16H25" />
           <path d="M10 21H22" />
+        </>
+      )}
+      {name === 'tabs' && (
+        <>
+          <rect x="7" y="8" width="15" height="14" rx="3" />
+          <path d="M11 8V7C11 5.9 11.9 5 13 5H23C24.1 5 25 5.9 25 7V18C25 19.1 24.1 20 23 20H22" />
+          <path d="M11 13H18" />
+          <path d="M11 17H16" />
         </>
       )}
       {name === 'home' && (
